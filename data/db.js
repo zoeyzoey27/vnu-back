@@ -33,12 +33,22 @@ const mongoDataMethods = {
   getStudentById: async (id) => await Student.findById(id),
   getStudents: async (studentInput, skip, take) => {
     const { classId, name } = studentInput;
+    if (classId) {
+      return Student.find({
+        classId: { $regex: classId || "", $options: "i" },
+        name: { $regex: name || "", $options: "i" },
+      })
+        .limit(take)
+        .skip(skip);
+    }
     return Student.find({
-      classId: { $regex: classId || "", $options: "i" },
       name: { $regex: name || "", $options: "i" },
     })
       .limit(take)
       .skip(skip);
+  },
+  getStudentsByClass: async (ids) => {
+    return Student.find({ _id: { $in: ids } });
   },
   getMajorById: async (id) => await Major.findById(id),
   getMajors: async (name, skip, take) => {
@@ -57,6 +67,7 @@ const mongoDataMethods = {
       status,
       createdAt,
       userId,
+      classId,
       updatedAt,
     } = userRegisterInput;
     const oldUser = await User.findOne({ email });
@@ -72,6 +83,7 @@ const mongoDataMethods = {
       status: status,
       role: role,
       createdAt: createdAt,
+      classId: classId,
       updatedAt: updatedAt,
     });
     const token = jwt.sign({ user_id: newUser._id, email }, "UNSAFESTRING", {
@@ -95,7 +107,102 @@ const mongoDataMethods = {
       createdAt: createdAt,
       updatedAt: updatedAt,
     });
+    studentIds?.forEach(async (item) => {
+      const student = Student.findById(item);
+      if (student) {
+        await Student.findByIdAndUpdate(
+          item,
+          { classId: newClass._id.toString() },
+          {
+            new: true,
+          }
+        );
+      }
+    });
     return await newClass.save();
+  },
+  updateClass: async (args) => {
+    const { id, updateClassInput } = args;
+    const classItem = await Class.findById(id);
+    if (classItem) {
+      const listOldStudent = classItem.studentIds;
+      const listNewStudent = updateClassInput.studentIds;
+      listOldStudent.forEach(async (item) => {
+        if (!listNewStudent.includes(item)) {
+          await Student.findByIdAndUpdate(
+            item,
+            { classId: null },
+            {
+              new: true,
+            }
+          );
+        }
+      });
+      listNewStudent.forEach(async (item) => {
+        if (!listOldStudent.includes(item)) {
+          await Student.findByIdAndUpdate(
+            item,
+            { classId: id },
+            {
+              new: true,
+            }
+          );
+        }
+      });
+    }
+    return await Class.findByIdAndUpdate(id, updateClassInput, {
+      new: true,
+    });
+  },
+  deleteClass: async (id) => {
+    const classItem = await Class.findById(id);
+    if (classItem) {
+      const listStudent = classItem.studentIds;
+      listStudent.forEach(async (item) => {
+        await Student.findByIdAndUpdate(
+          item,
+          { classId: null },
+          {
+            new: true,
+          }
+        );
+      });
+      await User.findByIdAndUpdate(
+        classItem.teacherId,
+        { classId: null },
+        {
+          new: true,
+        }
+      );
+    }
+    await Class.findByIdAndDelete(id);
+    return true;
+  },
+  deleteClasses: async (ids) => {
+    ids?.forEach(async (item) => {
+      const classItem = await Class.findById(item);
+      if (classItem) {
+        const listStudent = classItem.studentIds;
+        listStudent.forEach(async (studentItem) => {
+          await Student.findByIdAndUpdate(
+            studentItem,
+            { classId: null },
+            {
+              new: true,
+            }
+          );
+        });
+        await User.findByIdAndUpdate(
+          classItem.teacherId,
+          { classId: null },
+          {
+            new: true,
+          }
+        );
+      }
+    });
+    await Class.deleteMany({ _id: { $in: ids } });
+    return true;
   },
   createStudent: async (createStudentInput) => {
     const {
@@ -122,7 +229,45 @@ const mongoDataMethods = {
       createdAt: createdAt,
       updatedAt: updatedAt,
     });
+    const userClass = await Class.findById(classId);
+    if (userClass) {
+      const listStudent = userClass.studentIds;
+      listStudent.push(newStudent._id.toString());
+      await Class.findByIdAndUpdate(
+        classId,
+        { studentIds: listStudent },
+        {
+          new: true,
+        }
+      );
+    }
     return await newStudent.save();
+  },
+  updateStudent: async (args) => {
+    const { id, updateStudentInput } = args;
+    const userClass = await Class.findById(updateStudentInput.classId);
+    if (userClass) {
+      const listStudent = userClass.studentIds;
+      listStudent.push(id);
+      await Class.findByIdAndUpdate(
+        updateStudentInput.classId,
+        { studentIds: listStudent },
+        {
+          new: true,
+        }
+      );
+    }
+    return await Student.findByIdAndUpdate(id, updateStudentInput, {
+      new: true,
+    });
+  },
+  deleteStudent: async (id) => {
+    await Student.findByIdAndDelete(id);
+    return true;
+  },
+  deleteStudents: async (ids) => {
+    await Student.deleteMany({ _id: { $in: ids } });
+    return true;
   },
   createMajor: async (majorInput) => {
     const { majorId, name, graduationDiploma, time, createdAt, updatedAt } =

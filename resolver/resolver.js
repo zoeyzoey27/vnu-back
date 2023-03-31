@@ -30,6 +30,9 @@ const resolvers = {
     teacher: async ({ teacherId }, _args, { mongoDataMethods }) => {
       return await mongoDataMethods.getUserById(teacherId);
     },
+    students: async ({ studentIds }, _args, { mongoDataMethods }) => {
+      return await mongoDataMethods.getStudentsByClass(studentIds);
+    },
   },
   User: {
     userClass: async ({ id }, _args, { mongoDataMethods }) => {
@@ -52,11 +55,23 @@ const resolvers = {
     ) => await mongoDataMethods.registerUser(userRegisterInput),
     createClass: async (_parent, { createClassInput }, { mongoDataMethods }) =>
       await mongoDataMethods.createClass(createClassInput),
+    updateClass: async (_parent, args, { mongoDataMethods }) =>
+      await mongoDataMethods.updateClass(args),
+    deleteClass: async (_parent, { id }, { mongoDataMethods }) =>
+      await mongoDataMethods.deleteClass(id),
+    deleteClasses: async (_parent, { ids }, { mongoDataMethods }) =>
+      await mongoDataMethods.deleteClasses(ids),
     createStudent: async (
       _parent,
       { createStudentInput },
       { mongoDataMethods }
     ) => await mongoDataMethods.createStudent(createStudentInput),
+    updateStudent: async (_parent, args, { mongoDataMethods }) =>
+      await mongoDataMethods.updateStudent(args),
+    deleteStudent: async (_parent, { id }, { mongoDataMethods }) =>
+      await mongoDataMethods.deleteStudent(id),
+    deleteStudents: async (_parent, { ids }, { mongoDataMethods }) =>
+      await mongoDataMethods.deleteStudents(ids),
     createMajor: async (_parent, { majorInput }, { mongoDataMethods }) =>
       await mongoDataMethods.createMajor(majorInput),
     updateMajor: async (_parent, args, { mongoDataMethods }) =>
