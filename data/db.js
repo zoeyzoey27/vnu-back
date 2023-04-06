@@ -9,10 +9,11 @@ const Major = require("../models/Major");
 const mongoDataMethods = {
   getUserById: async (id) => await User.findById(id),
   getUsers: async (userInput, skip, take) => {
-    const { fullName, role } = userInput;
+    const { fullName, role, email } = userInput;
     return User.find({
       fullName: { $regex: fullName || "", $options: "i" },
       role: { $regex: role || "", $options: "i" },
+      email: { $regex: email || "", $options: "i" },
     })
       .limit(take)
       .skip(skip);
@@ -67,7 +68,6 @@ const mongoDataMethods = {
       status,
       createdAt,
       userId,
-      classId,
       updatedAt,
     } = userRegisterInput;
     const oldUser = await User.findOne({ email });
@@ -83,7 +83,6 @@ const mongoDataMethods = {
       status: status,
       role: role,
       createdAt: createdAt,
-      classId: classId,
       updatedAt: updatedAt,
     });
     const token = jwt.sign({ user_id: newUser._id, email }, "UNSAFESTRING", {
@@ -95,6 +94,103 @@ const mongoDataMethods = {
       id: res.id,
       ...res._doc,
     };
+  },
+  loginUser: async (loginInput) => {
+    const { email, password } = loginInput;
+    const user = await User.findOne({ email });
+    if (user && (await bcrypt.compare(password, user.password))) {
+      const token = jwt.sign({ user_id: user._id, email }, "UNSAFESTRING", {
+        expiresIn: "2h",
+      });
+      user.token = token;
+      return {
+        id: user.id,
+        ...user._doc,
+      };
+    } else {
+      throw new ApolloError(
+        "Tài khoản đăng nhập không chính xác",
+        "INCORRECT_ACCOUNT"
+      );
+    }
+  },
+  userChangePassword: async (args) => {
+    const { id, oldPassword, newPassword } = args;
+    const user = await User.findById(id);
+    if (user && (await bcrypt.compare(oldPassword, user.password))) {
+      const encryptedPassword = await bcrypt.hash(newPassword, 10);
+      await User.findByIdAndUpdate(
+        id,
+        { password: encryptedPassword },
+        {
+          new: true,
+        }
+      );
+    } else {
+      throw new ApolloError("Mật khẩu không chính xác", "INCORRECT_PASSWORD");
+    }
+    return true;
+  },
+  resetPassword: async (args) => {
+    const { id, password } = args;
+    const user = await User.findById(id);
+    if (user) {
+      const encryptedPassword = await bcrypt.hash(password, 10);
+      await User.findByIdAndUpdate(
+        id,
+        { password: encryptedPassword },
+        {
+          new: true,
+        }
+      );
+    }
+    return true;
+  },
+  updateUser: async (args) => {
+    const { id, updateUserInput } = args;
+    return await User.findByIdAndUpdate(id, updateUserInput, {
+      new: true,
+    });
+  },
+  updateUserStatus: async (args) => {
+    const { id, status } = args;
+    return await User.findByIdAndUpdate(
+      id,
+      { status: status },
+      {
+        new: true,
+      }
+    );
+  },
+  deleteUser: async (id) => {
+    const classItem = await Class.findOne({ teacherId: id });
+    if (classItem) {
+      await Class.findByIdAndUpdate(
+        classItem._id,
+        { teacherId: null },
+        {
+          new: true,
+        }
+      );
+    }
+    await User.findByIdAndDelete(id);
+    return true;
+  },
+  deleteUsers: async (ids) => {
+    ids?.forEach(async (item) => {
+      const classItem = await Class.findOne({ teacherId: item });
+      if (classItem) {
+        await Class.findByIdAndUpdate(
+          classItem._id,
+          { teacherId: null },
+          {
+            new: true,
+          }
+        );
+      }
+    });
+    await User.deleteMany({ _id: { $in: ids } });
+    return true;
   },
   createClass: async (createClassInput) => {
     const { classId, name, teacherId, studentIds, createdAt, updatedAt } =

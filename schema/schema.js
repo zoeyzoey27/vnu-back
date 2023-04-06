@@ -5,6 +5,10 @@ const typeDefs = gql`
     ADMIN
     TEACHER
   }
+  input LoginInput {
+    email: String!,
+    password: String! 
+  }
   type Major {
     id: ID!
     majorId: String!
@@ -39,6 +43,7 @@ const typeDefs = gql`
     role: Role!
     gender: String
     phoneNumber: String
+    token: String
     address: String
     status: String!
     userClass: Class
@@ -49,6 +54,7 @@ const typeDefs = gql`
   input UserInput {
     fullName: String
     role: Role
+    email: String
   }
   input UserRegisterInput {
     userId: String!
@@ -57,17 +63,15 @@ const typeDefs = gql`
     password: String!
     role: Role!
     status: String!
-    classId: ID
     createdAt: String!
     updatedAt: String
   }
   input UpdateUserInput {
-    userId: String!
     fullName: String!
-    email: String!
+    gender: String!
     role: Role!
-    status: String!
-    classId: ID
+    phoneNumber: String
+    address: String
     updatedAt: String
   }
   type Student {
@@ -124,7 +128,7 @@ const typeDefs = gql`
   input CreateClassInput {
     classId: String!
     name: String!
-    teacherId: ID!
+    teacherId: ID
     studentIds: [ID]
     createdAt: String!
     updatedAt: String
@@ -132,7 +136,7 @@ const typeDefs = gql`
   input UpdateClassInput {
     classId: String!
     name: String!
-    teacherId: ID!
+    teacherId: ID
     studentIds: [ID]
     updatedAt: String
   }
@@ -148,7 +152,13 @@ const typeDefs = gql`
   }
   type Mutation {
     registerUser(userRegisterInput: UserRegisterInput): User
+    loginUser(loginInput: LoginInput): User
     updateUser(id: ID!, updateUserInput: UpdateUserInput): User
+    updateUserStatus(id: ID!, status: String!): User
+    userChangePassword(id: ID!, oldPassword: String!, newPassword: String!): Boolean
+    resetPassword(id: ID!, password: String!): Boolean
+    deleteUser(id: ID!): Boolean
+    deleteUsers(ids: [ID]!): Boolean
     createClass(createClassInput: CreateClassInput): Class
     updateClass(id: ID!, updateClassInput: UpdateClassInput): Class
     deleteClass(id: ID!): Boolean

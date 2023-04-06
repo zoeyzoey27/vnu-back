@@ -53,6 +53,20 @@ const resolvers = {
       { userRegisterInput },
       { mongoDataMethods }
     ) => await mongoDataMethods.registerUser(userRegisterInput),
+    loginUser: async (_parent, { loginInput }, { mongoDataMethods }) =>
+      await mongoDataMethods.loginUser(loginInput),
+    userChangePassword: async (_parent, args, { mongoDataMethods }) =>
+      await mongoDataMethods.userChangePassword(args),
+    resetPassword: async (_parent, args, { mongoDataMethods }) =>
+      await mongoDataMethods.resetPassword(args),
+    updateUser: async (_parent, args, { mongoDataMethods }) =>
+      await mongoDataMethods.updateUser(args),
+    updateUserStatus: async (_parent, args, { mongoDataMethods }) =>
+      await mongoDataMethods.updateUserStatus(args),
+    deleteUser: async (_parent, { id }, { mongoDataMethods }) =>
+      await mongoDataMethods.deleteUser(id),
+    deleteUsers: async (_parent, { ids }, { mongoDataMethods }) =>
+      await mongoDataMethods.deleteUsers(ids),
     createClass: async (_parent, { createClassInput }, { mongoDataMethods }) =>
       await mongoDataMethods.createClass(createClassInput),
     updateClass: async (_parent, args, { mongoDataMethods }) =>
